@@ -1,5 +1,5 @@
 ### Asynchronous Low-code compiler for python
-[github](https://github.com/play-go/Atterlity-xfox)
+[github](https://github.com/play-go/xfox-code)
 
 # How to install
 
