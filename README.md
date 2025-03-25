@@ -18,8 +18,7 @@ pip install termcolor
 ```python
 import asyncio
 import xfox
-
-#Custom Functions
+#Custom Function
 
 @xfox.addfunc(xfox.funcs)
 async def test_func(item:str, *args, **kwargs):
@@ -50,10 +49,12 @@ async def inside(item:str, type:bool=False,*args, **kwargs):
 async def functest(func:xfox.AnonFunction,*args, **kwargs):
     return (await func.compile(), func.name)
 
+
+
 # Sync Parsing
 
 print(asyncio.run(xfox.parse("""
-// TRASH (xd) //
+/* TRASH (xd) */
 $test_func[$test_func[sfsaf]]
 $function1[1;$inside[true];$sadsadsdsd[]] $onlyif[1<2;ONLYIF]
 $function2[1+2;dsadasd] sometext
@@ -62,17 +63,17 @@ $function1[1;$inside[fsfdfd;true];$sadsadsdsd[]]
 $sdasdasd[sadsadsad]
 sdasdsa $exec[true;print(1+231321, end='')] $exec[true;print(1+231321, end='')] $exec[true;print(1+231321, end='')]
 
-// Let/Get //
+/* Let/Get */
 $let[test;good]
 $get[test]
 
-// Internal Functions Test //
+/* Internal Functions Test */
 $usefunc[$def[$print[hello!]]]
 $Test[]
 $def[$print[hello!];Test]
 $Test[] 
                              
-// While Test //
+/* While Test */
 $let[a;0]
 $while[$eval[$get[a]<=5];$let[a;$eval[$get[a]+1]]]
 $get[a]
@@ -80,25 +81,26 @@ $get[a]
 123 $while[True;$break[]]
 $break[]
 
-// DoWhile Test //
+/* DoWhile Test */
 $dowhile[1>2;Test]
                              
-// For Test //
+/* For Test */
 $for[1..5;$get[i]]
-$for[5;$get[i] $break[]]
+$for[0..100..10;$get[i]]
+$for[5;$if[$get[i]==2;$break[];$get[i]]]
 
-// Try Test //
+/* Try Test */
 $try[ERROR $get[_];$function1[]] 
 $try[$print[$get[_]];$function2[]]
 $try[$get[_];$raise[name;text]]
 
-// Import usage
+/* Import usage
 $import[ttest]
-$functiomm[] <- (custom function from ttest) //
+$functiomm[] <- (custom function from ttest) */
 
-// Exit - $exit[]//
-                                                                    
-// a Comment // | &s Not a Comment &s
+/* Exit - $exit[] */
+                                                                              
+/* a Comment */ | \/\* Not a Comment \*\/
 """, ctx="asdsdsdasds",del_empty_lines=True)))
 ```
 
@@ -117,13 +119,15 @@ FOX
 $sdasdasd[sadsadsad]
 sdasdsa 231322 231322 231322
 good
-('', '2774ca')
+('', 'a547f0')
 $Test[]
 6
 123 789101112131415
 123
 Test
 12345
+0102030405060708090100
+01
 ERROR Mising var type in function1
 [ERROR] name: text
  | // Not a Comment //
@@ -143,4 +147,4 @@ python -m xfox (filename).xfox
 
 # Examples
 
-[package for creation Discord bots (outaded)](https://github.com/play-go/xfox-code/tree/main/example/discord)
+Soon...
