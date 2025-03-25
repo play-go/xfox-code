@@ -100,7 +100,7 @@ $functiomm[] <- (custom function from ttest) */
 
 /* Exit - $exit[] */
                                                                               
-/* a Comment */ | \/\* Not a Comment \*\/
+/* a Comment */ | &s Not a Comment &s
 """, ctx="asdsdsdasds",del_empty_lines=True)))
 ```
 
