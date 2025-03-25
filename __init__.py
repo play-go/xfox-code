@@ -19,9 +19,9 @@ class AnonFunction:
     def __init__(self,name,code):
         self.name=name
         self.__code=code
-    async def compile(self):
-        return await parse(self.__code)
-VERSION="0.1.7"
+    async def compile(self, **kwargs):
+        return await parse(self.__code, **kwargs)
+VERSION="0.1.9.5"
 cache=CacheData()
 class StopWord(Exception):
     def __init__(self, text):
@@ -48,6 +48,13 @@ async def isempty(item, count=-1):
     if item == '': raise Empty(f"Mising var {fvar[0][0]} in {fname}")
     elif len(item)<count or count!=-1: raise Empty(f"Mising vars in {fname}")
     return False
+
+async def findanonfunc(text):
+    x=re.search(r"<Function (\w+)>", text)
+    if x:
+        return AnonFunction(x.groups()[0],await get(x.groups()[0]))
+    else:
+        return None
 
 def isindclass(a,b):
     if a is b:
@@ -76,11 +83,13 @@ async def pyexec(back:bool,*args, **kwargs):
     asyncio.set_event_loop(loop)
     try:
         with contextlib.redirect_stdout(str_obj):
-            async def execd():
-                exec(args[0])
-            loop.run_until_complete(execd())
+            async def execd(kwargs):
+                exec(args[0],globals(),kwargs)
+            loop.run_until_complete(execd(kwargs))
             loop.close()
     except Exception as e:
+        str_obj.close()
+        loop.close()
         return e
     ret=str_obj.getvalue()
     str_obj.close()
@@ -111,6 +120,14 @@ async def praise(error:str,text:str,*args, **kwargs):
 async def pinput(text: str, *args, **kwargs):
     "Get user input from console."
     return input(text)
+
+@addfunc(funcs, 'getfrom')
+async def getfromvalue(var: str, toget: str,*args, **kwargs):
+    "Get value from another value in kwargs."
+    if var=="self":
+        return kwargs[toget]
+    else:
+        return getattr(kwargs[var],toget)
 
 @addfunc(funcs, 'print')
 async def console(*args, **kwargs):
@@ -237,7 +254,7 @@ async def xffor(item, code:str,*args, **kwargs):
     except: pass
     if len(item.split(".."))>1:
         a=item.split("..")
-        for i in range(int(a[0]),int(a[1])+1):
+        for i in range(int(a[0]),int(a[1])+1,int(a[2]) if len(a)>2 else 1):
             await let("i",i)
             try:
                 trash=trash+str(await parse(code,stop_word=True,in_cycle=True, **kwargs))
@@ -308,6 +325,10 @@ async def xfrandomtext(col:int=1, *args, **kwargs):
 async def xftimestamp(*args, **kwargs):
     "Allows to get timestamp."
     return time.time()
+
+@addfunc(funcs, "sleep")
+async def psleep(seconds: int, *args, **kwargs):
+    await asyncio.sleep(seconds)
 
 @addfunc(funcs, "fetch")
 async def xffetch(item:str,name:str=None,*args, **kwargs):
@@ -397,49 +418,53 @@ async def __parse_code(code: str, stop_word:bool=False, in_cycle:bool=False, **k
                 insp=inspect.getfullargspec(fun).args
                 insp_l=len(insp)
                 for i in insp:
-                    if not inspect.signature(fun).parameters[i].default is inspect._empty:
+                    if not (inspect.signature(fun).parameters[i].default is inspect._empty) or inspect.signature(fun).parameters[i].default==None:
                         insp_l-=1
                 if len(argument) >= insp_l:
                     sgin=inspect.signature(fun)
                     for i,k in zip(insp,argument):
                         isdnsd=sgin.parameters[i].annotation
-                        if isindclass(isdnsd, str) or isindclass(isdnsd, inspect._empty):
-                            if k == '':
-                                raise Empty(f"Mising var {i} in {fun.__name__}")
-                        elif isindclass(isdnsd, AnonFunction):
-                            x=re.search(r"<Function (\w+)>", k)
-                            if x:
-                                argument[argument.index(k)]=AnonFunction(x.groups()[0],await get(x.groups()[0]))
-                            else:
-                                raise Empty(f"Mising var {i} in {fun.__name__}")
-                        elif isindclass(isdnsd, int):   
-                            if k.isdigit():
-                                argument[argument.index(k)]=int(k)
-                            else:
-                                if k.count('.') == 1:
-                                    s = k.replace('.', '')
-                                    if s.isdigit():
-                                        argument[argument.index(k)]=int(k)
+                        if not (inspect.signature(fun).parameters[i].default is inspect._empty) and k == '':
+                            argument[argument.index(k)]=None
+                            k='none'
+                        else:
+                            if isindclass(isdnsd, str) or isindclass(isdnsd, inspect._empty):
+                                if k == '':
+                                    raise Empty(f"Mising var {i} in {fun.__name__}")
+                            elif isindclass(isdnsd, AnonFunction):
+                                x=re.search(r"<Function (\w+)>", k)
+                                if x:
+                                    argument[argument.index(k)]=AnonFunction(x.groups()[0],await get(x.groups()[0]))
+                                else:
+                                    raise Empty(f"Mising var {i} in {fun.__name__}")
+                            elif isindclass(isdnsd, int):   
+                                if k.isdigit():
+                                    argument[argument.index(k)]=int(k)
+                                else:
+                                    if k.count('.') == 1:
+                                        s = k.replace('.', '')
+                                        if s.isdigit():
+                                            argument[argument.index(k)]=int(k)
+                                        else:
+                                            raise WrongAnnotation(f"Wrong varible {i} type in {fun.__name__}. Need {isdnsd}")
                                     else:
                                         raise WrongAnnotation(f"Wrong varible {i} type in {fun.__name__}. Need {isdnsd}")
+                            elif isindclass(isdnsd, float):
+                                try:
+                                    argument[argument.index(k)]=float(k)
+                                except: raise WrongAnnotation(f"Wrong varible {i} type in {fun.__name__}. Need {isdnsd}")
+                            elif isindclass(isdnsd, list) or isindclass(isdnsd, dict):
+                                try: argument[argument.index(k)]=json.loads(k)
+                                except: raise WrongAnnotation(f"Wrong varible {i} type in {fun.__name__}. Need {isdnsd}")
+                            elif isindclass(isdnsd, bool):
+                                if k.lower()=="true":
+                                    argument[argument.index(k)]=True
+                                elif k.lower()=="false":
+                                    argument[argument.index(k)]=False
                                 else:
                                     raise WrongAnnotation(f"Wrong varible {i} type in {fun.__name__}. Need {isdnsd}")
-                        elif isindclass(isdnsd, float):
-                            try:
-                                argument[argument.index(k)]=float(k)
-                            except: raise WrongAnnotation(f"Wrong varible {i} type in {fun.__name__}. Need {isdnsd}")
-                        elif isindclass(isdnsd, list) or isindclass(isdnsd, dict):
-                            try: argument[argument.index(k)]=json.loads(k)
-                            except: raise WrongAnnotation(f"Wrong varible {i} type in {fun.__name__}. Need {isdnsd}")
-                        elif isindclass(isdnsd, bool):
-                            if k.lower()=="true":
-                                argument[argument.index(k)]=True
-                            elif k.lower()=="false":
-                                argument[argument.index(k)]=False
                             else:
                                 raise WrongAnnotation(f"Wrong varible {i} type in {fun.__name__}. Need {isdnsd}")
-                        else:
-                            raise WrongAnnotation(f"Wrong varible {i} type in {fun.__name__}. Need {isdnsd}")
                     output=''
                     try:
                         output=await fun(*argument,**kwargs)
@@ -460,7 +485,7 @@ async def __parse_code(code: str, stop_word:bool=False, in_cycle:bool=False, **k
     return code.strip()
 async def parse(code: str,del_empty_lines:bool=False,clear_output:bool=True,stop_word:bool=False,in_cycle:bool=False,**kwargs):
     "Parser for xfox code!"
-    output=await __parse_code(re.sub('\/\/.*?\/\/', '', code, flags=re.DOTALL),stop_word=stop_word,in_cycle=in_cycle,**kwargs)
+    output=await __parse_code(re.sub('\/\*.*?\*\/', '', code, flags=re.DOTALL),stop_word=stop_word,in_cycle=in_cycle,**kwargs)
     output=output.strip()
     if clear_output:
         for i,j in output_rep.items():
