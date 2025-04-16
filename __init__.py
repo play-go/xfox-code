@@ -40,7 +40,7 @@ class Raise(Exception):
         super().__init__(text)
 
 DNTl=["xfexec",'try','if','for','def','while',"dowhile"]
-output_rep={"&i":'$',"&j":"&","&k":';',"&s":'//'}
+output_rep={}
 
 async def isempty(item, count=-1):
     fname=traceback.extract_stack()[-2][2]
