@@ -100,7 +100,7 @@ $functiomm[] <- (custom function from ttest) */
 
 /* Exit - $exit[] */
                                                                               
-/* a Comment */ | &s Not a Comment &s
+/* a Comment */ | &s not working now
 """, ctx="asdsdsdasds",del_empty_lines=True)))
 ```
 
@@ -130,7 +130,7 @@ Test
 01
 ERROR Mising var type in function1
 [ERROR] name: text
- | // Not a Comment //
+ | &s not working now
 ```
 
 # Interactive Xfox Interpreter
